@@ -173,7 +173,7 @@ If you build something cool on top of it, post about it — and tag the project 
 
 ## 🙏 Credits
 
-Built by [JP](https://lumaisla.com) of Luma-Isla Studios in Oklahoma. Released free for the Oklahoma 3D Print community and any maker who wants it.
+Built by [JP](https://www.luma-isla.com) of Luma-Isla Studios in Oklahoma. Released free for the Oklahoma 3D Print community and any maker who wants it.
 
 If this saves you time, consider buying something from a small Etsy maker today. We're all out here trying to make a living on our hobbies.
 

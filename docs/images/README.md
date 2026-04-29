@@ -1,11 +1,10 @@
 # Screenshots
-
-Drop screenshots of the GUI here so they show up in the README and docs.
+<img width="1303" height="980" alt="image" src="https://github.com/user-attachments/assets/5229f1f6-a266-456a-ab2b-ca9dc2f4cfda" />
+<img width="1110" height="862" alt="image" src="https://github.com/user-attachments/assets/ffb92456-7567-48bc-8d25-e9c64af5b442" />
+<img width="1109" height="655" alt="image" src="https://github.com/user-attachments/assets/cb6eca9d-ca93-4da5-a4d5-3a2b27504083" />
 
 Suggested files:
-- `screenshot-main.png` — the main forge interface, ideally with a real result loaded
-- `screenshot-results.png` — the result tabs filled in
-- `screenshot-n8n-workflow.png` — the n8n canvas showing the full pipeline
+
 
 Image guidelines:
 - Width 1200-1600 px is ideal for README rendering

@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local environment / secrets — never commit these
+.env
+.env.local
+*.key
+*-key.txt
+api-keys.txt
+credentials.json
+
+# Docker volumes (if anyone runs n8n's volume locally inside the repo by mistake)
+n8n_data/
+listing-forge-data/
+
+# Logs
+*.log

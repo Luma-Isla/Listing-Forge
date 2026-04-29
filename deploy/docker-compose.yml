@@ -1,0 +1,16 @@
+services:
+  listing-forge-web:
+    image: nginx:alpine
+    container_name: listing-forge-web
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    volumes:
+      # Mount the GUI folder from the repo as read-only into nginx
+      - ../gui:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

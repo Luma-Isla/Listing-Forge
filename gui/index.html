@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Listing Forge :: Lumaisla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;700;900&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0:#0a0b0d; --bg-1:#111317; --bg-2:#181b21; --bg-3:#21252d;
+    --line:#2a2f38; --line-hot:#3a4150;
+    --ink:#e8e6e1; --ink-dim:#8a8f99; --ink-faint:#5a606b;
+    --coral:#ff7d4d; --coral-glow:#ff7d4d33;
+    --teal:#4dd9c1; --teal-glow:#4dd9c133;
+    --amber:#ffc658; --crimson:#ff5470; --ok:#6fdc8c;
+    --shadow:0 20px 50px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.3);
+    --grid:linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg-0);color:var(--ink);font-family:'Manrope',system-ui,sans-serif;font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+  body{background-image:var(--grid);background-size:32px 32px;background-attachment:fixed}
+  .frame{max-width:1320px;margin:0 auto;padding:24px 28px 80px}
+
+  /* HEADER */
+  .top{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--line);border-radius:14px;margin-bottom:28px;position:relative;overflow:hidden}
+  .top::before{content:'';position:absolute;inset:0;background:radial-gradient(600px circle at 0% 50%,var(--coral-glow),transparent 50%),radial-gradient(500px circle at 100% 50%,var(--teal-glow),transparent 50%);pointer-events:none;opacity:.6}
+  .top>*{position:relative;z-index:1}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo-mark{width:38px;height:38px;border-radius:10px;background:conic-gradient(from 215deg,var(--coral),var(--amber),var(--teal),var(--coral));position:relative;box-shadow:0 0 24px var(--coral-glow)}
+  .logo-mark::after{content:'';position:absolute;inset:4px;border-radius:7px;background:var(--bg-1)}
+  .logo-mark::before{content:'◆';position:absolute;inset:0;display:grid;place-items:center;color:var(--coral);font-size:14px;z-index:2}
+  .brand-text h1{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;letter-spacing:.02em}
+  .brand-text .sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:2px}
+  .status-cluster{display:flex;align-items:center;gap:14px}
+  .status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);background:var(--bg-1);border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim);letter-spacing:.08em;text-transform:uppercase}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint)}
+  .dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.err{background:var(--crimson);box-shadow:0 0 8px var(--crimson)}
+  .dot.warn{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  .icon-btn{display:grid;place-items:center;width:36px;height:36px;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;color:var(--ink-dim);cursor:pointer;transition:all .15s}
+  .icon-btn:hover{color:var(--coral);border-color:var(--coral)}
+
+  /* MAIN GRID */
+  .stage{display:grid;grid-template-columns:1.1fr 1fr;gap:24px;align-items:start}
+  @media(max-width:940px){.stage{grid-template-columns:1fr}}
+
+  .panel{background:var(--bg-1);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--bg-2)}
+  .panel-head h2{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+  .panel-head .meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-faint);letter-spacing:.12em}
+  .panel-body{padding:22px}
+
+  /* DROP ZONE */
+  .drop{position:relative;border:1.5px dashed var(--line-hot);background:var(--bg-2);border-radius:12px;aspect-ratio:1.15;display:grid;place-items:center;cursor:pointer;transition:all .2s;overflow:hidden}
+  .drop:hover,.drop.drag{border-color:var(--coral);background:linear-gradient(135deg,var(--bg-2),rgba(255,125,77,.05))}
+  .drop.has-image{border-style:solid;cursor:default}
+  .drop input[type=file]{display:none}
+  .drop-empty{text-align:center;color:var(--ink-dim);padding:24px}
+  .drop-empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.6}
+  .drop-empty .big{font-family:'Unbounded',sans-serif;font-size:15px;color:var(--ink);margin-bottom:6px;font-weight:500}
+  .drop-empty .small{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--ink-faint);text-transform:uppercase}
+  .drop-image{position:absolute;inset:0;object-fit:cover;width:100%;height:100%}
+  .drop-actions{position:absolute;top:12px;right:12px;display:flex;gap:8px;z-index:2}
+  .drop-actions button{padding:6px 12px;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);border:1px solid var(--line);color:var(--ink);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+  .drop-actions button:hover{border-color:var(--coral);color:var(--coral)}
+
+  /* FORM */
+  .field{margin-bottom:18px}
+  .field:last-child{margin-bottom:0}
+  .field label{display:block;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:8px}
+  .field label .req{color:var(--coral)}
+  .input,.textarea,.select{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink);font-family:'Manrope',sans-serif;font-size:14px;transition:all .15s}
+  .input:focus,.textarea:focus,.select:focus{outline:none;border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-glow)}
+  .textarea{resize:vertical;min-height:80px}
+  .select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%238a8f99' d='M6 8L2 4h8z'/></svg>");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+  /* CHIPS */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:8px 14px;background:var(--bg-2);border:1px solid var(--line);border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-dim);letter-spacing:.06em;cursor:pointer;transition:all .15s;user-select:none}
+  .chip:hover{border-color:var(--line-hot);color:var(--ink)}
+  .chip.active{background:linear-gradient(135deg,var(--coral),#ff6633);color:#1a0d08;border-color:var(--coral);font-weight:600}
+
+  /* CTA */
+  .cta{width:100%;margin-top:20px;padding:16px;background:linear-gradient(135deg,var(--coral),#ff5e2c);color:#1a0a04;border:none;border-radius:12px;font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;box-shadow:0 8px 24px var(--coral-glow),inset 0 1px 0 rgba(255,255,255,.2)}
+  .cta:hover{transform:translateY(-1px);box-shadow:0 12px 32px var(--coral-glow)}
+  .cta:active{transform:translateY(0)}
+  .cta:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+  /* PROGRESS */
+  .progress{margin-top:24px;padding:20px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;display:none}
+  .progress.active{display:block}
+  .progress h3{font-family:'Unbounded',sans-serif;font-size:12px;margin-bottom:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-dim)}
+  .step{display:flex;align-items:center;gap:12px;padding:10px 0;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-faint);border-bottom:1px dashed var(--line)}
+  .step:last-child{border-bottom:none}
+  .step .indicator{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line-hot);flex-shrink:0;position:relative}
+  .step.running .indicator{border-color:var(--coral);animation:pulse 1.2s ease-in-out infinite}
+  .step.running .indicator::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--coral)}
+  .step.done .indicator{border-color:var(--ok);background:var(--ok)}
+  .step.done .indicator::after{content:'✓';position:absolute;inset:0;display:grid;place-items:center;font-size:11px;color:#0a0b0d;font-weight:700}
+  .step.err .indicator{border-color:var(--crimson);background:var(--crimson)}
+  .step.err .indicator::after{content:'!';position:absolute;inset:0;display:grid;place-items:center;font-size:11px;color:#0a0b0d;font-weight:700}
+  .step.running,.step.done{color:var(--ink)}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--coral-glow)}50%{box-shadow:0 0 0 8px transparent}}
+
+  /* RESULTS */
+  .results{margin-top:28px;display:none}
+  .results.active{display:block;animation:slideIn .4s ease-out}
+  @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .tabs{display:flex;gap:4px;padding:6px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;margin-bottom:20px;width:fit-content}
+  .tab{padding:10px 18px;background:transparent;border:none;color:var(--ink-dim);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:8px;transition:all .15s}
+  .tab:hover{color:var(--ink)}
+  .tab.active{background:var(--bg-3);color:var(--coral)}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  .result-block{background:var(--bg-1);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
+  .result-block-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+  .result-block-head .label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+  .result-block-head .label .by{color:var(--teal);margin-left:8px}
+  .copy-btn{padding:5px 10px;background:transparent;border:1px solid var(--line);color:var(--ink-dim);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s}
+  .copy-btn:hover{color:var(--coral);border-color:var(--coral)}
+  .copy-btn.done{color:var(--ok);border-color:var(--ok)}
+  .result-block-body{padding:18px;font-size:14px;color:var(--ink);white-space:pre-wrap;word-wrap:break-word;font-family:'Manrope',sans-serif;line-height:1.65}
+  .result-block-body.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+  .tag-list{display:flex;flex-wrap:wrap;gap:6px}
+  .tag-list span{padding:5px 10px;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink)}
+  .source-list{list-style:none}
+  .source-list li{padding:10px 0;border-bottom:1px dashed var(--line);font-family:'JetBrains Mono',monospace;font-size:11px}
+  .source-list li:last-child{border-bottom:none}
+  .source-list a{color:var(--teal);text-decoration:none}
+  .source-list a:hover{text-decoration:underline}
+  .source-list .citation{color:var(--ink-dim);margin-top:4px;font-family:'Manrope',sans-serif;font-size:12px;line-height:1.5}
+
+  /* SETTINGS DRAWER */
+  .drawer{position:fixed;top:0;right:-440px;width:420px;max-width:90vw;height:100vh;background:var(--bg-1);border-left:1px solid var(--line);box-shadow:-20px 0 40px rgba(0,0,0,.5);transition:right .3s cubic-bezier(.4,0,.2,1);z-index:100;overflow-y:auto}
+  .drawer.open{right:0}
+  .drawer-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--bg-2);position:sticky;top:0;z-index:1}
+  .drawer-head h2{font-family:'Unbounded',sans-serif;font-size:14px;letter-spacing:.04em}
+  .drawer-body{padding:24px}
+  .drawer-section{margin-bottom:28px}
+  .drawer-section h3{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--coral);margin-bottom:12px}
+  .helptext{font-size:12px;color:var(--ink-dim);margin-top:6px;line-height:1.5}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:99;opacity:0;pointer-events:none;transition:opacity .3s}
+  .scrim.active{opacity:1;pointer-events:auto}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120%);background:var(--bg-3);border:1px solid var(--line-hot);border-radius:10px;padding:14px 22px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink);box-shadow:var(--shadow);z-index:200;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.ok{border-color:var(--ok)}
+  .toast.err{border-color:var(--crimson)}
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:var(--bg-0)}
+  ::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:6px;border:2px solid var(--bg-0)}
+  ::-webkit-scrollbar-thumb:hover{background:var(--line-hot)}
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <!-- HEADER -->
+  <header class="top">
+    <div class="brand">
+      <div class="logo-mark"></div>
+      <div class="brand-text">
+        <h1>Listing Forge</h1>
+        <div class="sub">Lumaisla // Multi-Model Pipeline</div>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <div class="status-pill" id="conn-status">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">n8n // unconfigured</span>
+      </div>
+      <button class="icon-btn" id="settings-btn" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN STAGE -->
+  <div class="stage">
+
+    <!-- LEFT: Image + Form -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>// Source</h2>
+        <span class="meta">step.01</span>
+      </div>
+      <div class="panel-body">
+        <div class="drop" id="drop">
+          <input type="file" id="file" accept="image/*">
+          <div class="drop-empty" id="drop-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div class="big">Drop product image</div>
+            <div class="small">or tap to browse · JPG / PNG</div>
+          </div>
+          <img class="drop-image" id="drop-img" style="display:none" alt="">
+          <div class="drop-actions" id="drop-actions" style="display:none">
+            <button id="replace-btn">Replace</button>
+            <button id="remove-btn">Remove</button>
+          </div>
+        </div>
+
+        <div style="margin-top:22px">
+          <div class="field">
+            <label>Brief title <span class="req">*</span></label>
+            <input class="input" id="title" placeholder="e.g. Hand-painted Joker bust, Nicholson, life-size">
+          </div>
+          <div class="field">
+            <label>Notes (optional)</label>
+            <textarea class="textarea" id="notes" placeholder="Anything you know about it that won't be obvious from the image: materials, dimensions, time invested, story, inspiration, batch size, finish quality..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Configuration -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>// Forge</h2>
+        <span class="meta">step.02</span>
+      </div>
+      <div class="panel-body">
+
+        <div class="field">
+          <label>Product type</label>
+          <div class="chips" id="type-chips">
+            <span class="chip active" data-val="sculpture">Sculpture</span>
+            <span class="chip" data-val="bust">Bust</span>
+            <span class="chip" data-val="charm">Charm</span>
+            <span class="chip" data-val="stitch_marker">Stitch marker</span>
+            <span class="chip" data-val="prop">Prop</span>
+            <span class="chip" data-val="cosplay">Cosplay piece</span>
+            <span class="chip" data-val="diorama">Diorama</span>
+            <span class="chip" data-val="other">Other</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Marketplace</label>
+          <div class="chips" id="market-chips">
+            <span class="chip active" data-val="both">Etsy + Shopify</span>
+            <span class="chip" data-val="etsy">Etsy only</span>
+            <span class="chip" data-val="shopify">Shopify only</span>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Made-to-order?</label>
+            <select class="select" id="made-to-order">
+              <option value="false">No, in stock</option>
+              <option value="true">Yes, made-to-order</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Price tier</label>
+            <select class="select" id="price-tier">
+              <option value="auto">Auto-suggest</option>
+              <option value="under_25">Under $25</option>
+              <option value="25_75">$25–$75</option>
+              <option value="75_200">$75–$200</option>
+              <option value="200_500">$200–$500</option>
+              <option value="500_plus">$500+</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Brand voice anchors</label>
+          <div class="chips" id="voice-chips">
+            <span class="chip active" data-val="warm">Warm</span>
+            <span class="chip active" data-val="maker">Maker-led</span>
+            <span class="chip" data-val="playful">Playful</span>
+            <span class="chip" data-val="luxe">Luxe</span>
+            <span class="chip" data-val="nerdy">Nerdy</span>
+            <span class="chip" data-val="tropical">Tropical</span>
+            <span class="chip" data-val="bilingual">Bilingual EN/ES</span>
+          </div>
+        </div>
+
+        <button class="cta" id="forge-btn">⚡ Forge listing</button>
+
+        <div class="progress" id="progress">
+          <h3>Pipeline</h3>
+          <div class="step" data-step="vision"><div class="indicator"></div><span>Gemini :: vision analysis</span></div>
+          <div class="step" data-step="research"><div class="indicator"></div><span>Gemini :: grounded research + sources</span></div>
+          <div class="step" data-step="claude"><div class="indicator"></div><span>Claude :: brand voice description</span></div>
+          <div class="step" data-step="gpt"><div class="indicator"></div><span>GPT :: titles, tags, ad variants</span></div>
+          <div class="step" data-step="seo"><div class="indicator"></div><span>Gemini :: SEO meta + structured data</span></div>
+          <div class="step" data-step="assemble"><div class="indicator"></div><span>Assembling deliverables</span></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RESULTS -->
+  <section class="results" id="results">
+    <div class="tabs">
+      <button class="tab active" data-tab="etsy">Etsy</button>
+      <button class="tab" data-tab="shopify">Shopify</button>
+      <button class="tab" data-tab="ads">Ad copy</button>
+      <button class="tab" data-tab="sources">Sources</button>
+      <button class="tab" data-tab="raw">Raw JSON</button>
+    </div>
+
+    <div class="tab-content active" data-tab="etsy" id="tab-etsy"></div>
+    <div class="tab-content" data-tab="shopify" id="tab-shopify"></div>
+    <div class="tab-content" data-tab="ads" id="tab-ads"></div>
+    <div class="tab-content" data-tab="sources" id="tab-sources"></div>
+    <div class="tab-content" data-tab="raw" id="tab-raw"></div>
+  </section>
+
+</div>
+
+<!-- SETTINGS DRAWER -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h2>Settings</h2>
+    <button class="icon-btn" id="drawer-close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+
+    <div class="drawer-section">
+      <h3>// n8n webhook</h3>
+      <div class="field">
+        <label>Production URL</label>
+        <input class="input" id="webhook-url" placeholder="http://192.168.1.41:5678/webhook/listing-forge">
+        <div class="helptext">Get this from your n8n workflow's Webhook node. Stored in this browser only — never sent anywhere except to your n8n instance.</div>
+      </div>
+      <div class="field">
+        <label>Auth header (optional)</label>
+        <input class="input" id="webhook-auth" placeholder="Bearer xxxxx">
+        <div class="helptext">Only fill in if you've set "Header Auth" credentials on the webhook node.</div>
+      </div>
+      <button class="cta" id="test-btn" style="margin-top:8px">Test connection</button>
+    </div>
+
+    <div class="drawer-section">
+      <h3>// Defaults</h3>
+      <div class="field">
+        <label>Shopify store handle</label>
+        <input class="input" id="shopify-handle" placeholder="lumaisla">
+      </div>
+      <div class="field">
+        <label>Etsy shop name</label>
+        <input class="input" id="etsy-shop" placeholder="Lumaisla">
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>// About</h3>
+      <div class="helptext" style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7">
+        Listing Forge v1.0<br>
+        Multi-model pipeline:<br>
+        → Gemini for vision + grounded research<br>
+        → Claude for brand voice + long-form<br>
+        → GPT for short-form variations<br>
+        → Sources cited from live web
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+//=============================================================================
+// STATE
+//=============================================================================
+const state = {
+  image: null,        // base64 string
+  imageType: null,    // mime type
+  imageName: null,
+  productType: 'sculpture',
+  marketplace: 'both',
+  voiceAnchors: ['warm', 'maker'],
+  webhookUrl: '',
+  webhookAuth: '',
+  shopifyHandle: '',
+  etsyShop: '',
+  busy: false,
+  lastResult: null
+};
+
+const STORAGE_KEY = 'lumaisla_listing_forge_v1';
+
+function loadSettings(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const cfg = JSON.parse(raw);
+    state.webhookUrl = cfg.webhookUrl || '';
+    state.webhookAuth = cfg.webhookAuth || '';
+    state.shopifyHandle = cfg.shopifyHandle || '';
+    state.etsyShop = cfg.etsyShop || '';
+    document.getElementById('webhook-url').value = state.webhookUrl;
+    document.getElementById('webhook-auth').value = state.webhookAuth;
+    document.getElementById('shopify-handle').value = state.shopifyHandle;
+    document.getElementById('etsy-shop').value = state.etsyShop;
+    updateConnStatus();
+  } catch(e){ console.warn('settings load failed', e); }
+}
+
+function saveSettings(){
+  state.webhookUrl = document.getElementById('webhook-url').value.trim();
+  state.webhookAuth = document.getElementById('webhook-auth').value.trim();
+  state.shopifyHandle = document.getElementById('shopify-handle').value.trim();
+  state.etsyShop = document.getElementById('etsy-shop').value.trim();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    webhookUrl: state.webhookUrl,
+    webhookAuth: state.webhookAuth,
+    shopifyHandle: state.shopifyHandle,
+    etsyShop: state.etsyShop
+  }));
+  updateConnStatus();
+}
+
+function updateConnStatus(){
+  const dot = document.getElementById('conn-dot');
+  const text = document.getElementById('conn-text');
+  if (!state.webhookUrl){
+    dot.className = 'dot';
+    text.textContent = 'n8n // unconfigured';
+  } else {
+    dot.className = 'dot warn';
+    text.textContent = 'n8n // ready';
+  }
+}
+
+//=============================================================================
+// IMAGE HANDLING
+//=============================================================================
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const dropImg = document.getElementById('drop-img');
+const dropEmpty = document.getElementById('drop-empty');
+const dropActions = document.getElementById('drop-actions');
+
+drop.addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') fileInput.click();
+});
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  drop.classList.remove('drag');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+document.getElementById('replace-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  fileInput.click();
+});
+document.getElementById('remove-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  clearImage();
+});
+
+function handleFile(file){
+  if (!file.type.startsWith('image/')){
+    toast('Image files only', 'err');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024){
+    toast('Image too large (max 10MB)', 'err');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.image = ev.target.result.split(',')[1];
+    state.imageType = file.type;
+    state.imageName = file.name;
+    dropImg.src = ev.target.result;
+    dropImg.style.display = 'block';
+    dropEmpty.style.display = 'none';
+    dropActions.style.display = 'flex';
+    drop.classList.add('has-image');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage(){
+  state.image = null;
+  state.imageType = null;
+  state.imageName = null;
+  dropImg.src = '';
+  dropImg.style.display = 'none';
+  dropEmpty.style.display = 'block';
+  dropActions.style.display = 'none';
+  drop.classList.remove('has-image');
+  fileInput.value = '';
+}
+
+//=============================================================================
+// CHIPS
+//=============================================================================
+function setupChips(containerId, stateKey, multi){
+  const container = document.getElementById(containerId);
+  container.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    const val = chip.dataset.val;
+    if (multi){
+      chip.classList.toggle('active');
+      const all = [...container.querySelectorAll('.chip.active')].map(c => c.dataset.val);
+      state[stateKey] = all;
+    } else {
+      container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state[stateKey] = val;
+    }
+  });
+}
+setupChips('type-chips', 'productType', false);
+setupChips('market-chips', 'marketplace', false);
+setupChips('voice-chips', 'voiceAnchors', true);
+
+//=============================================================================
+// SETTINGS DRAWER
+//=============================================================================
+const drawer = document.getElementById('drawer');
+const scrim = document.getElementById('scrim');
+document.getElementById('settings-btn').addEventListener('click', () => {
+  drawer.classList.add('open');
+  scrim.classList.add('active');
+});
+document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+scrim.addEventListener('click', closeDrawer);
+function closeDrawer(){
+  saveSettings();
+  drawer.classList.remove('open');
+  scrim.classList.remove('active');
+}
+
+document.getElementById('test-btn').addEventListener('click', async () => {
+  saveSettings();
+  if (!state.webhookUrl){
+    toast('Set the webhook URL first', 'err');
+    return;
+  }
+  toast('Pinging webhook...');
+  try {
+    const r = await fetch(state.webhookUrl, {
+      method: 'POST',
+      headers: buildHeaders(),
+      body: JSON.stringify({ ping: true })
+    });
+    if (r.ok || r.status === 200){
+      toast('✓ Webhook reachable', 'ok');
+      const dot = document.getElementById('conn-dot');
+      dot.className = 'dot ok';
+    } else {
+      toast(`Webhook returned ${r.status}`, 'err');
+    }
+  } catch(e){
+    toast('Cannot reach webhook', 'err');
+  }
+});
+
+function buildHeaders(){
+  const h = { 'Content-Type': 'application/json' };
+  if (state.webhookAuth) h['Authorization'] = state.webhookAuth;
+  return h;
+}
+
+//=============================================================================
+// FORGE
+//=============================================================================
+document.getElementById('forge-btn').addEventListener('click', forge);
+
+async function forge(){
+  if (state.busy) return;
+
+  // validate
+  const title = document.getElementById('title').value.trim();
+  if (!state.image){ toast('Add a product image', 'err'); return; }
+  if (!title){ toast('Add a brief title', 'err'); return; }
+  if (!state.webhookUrl){
+    toast('Configure the n8n webhook in settings first', 'err');
+    document.getElementById('settings-btn').click();
+    return;
+  }
+
+  state.busy = true;
+  document.getElementById('forge-btn').disabled = true;
+  document.getElementById('forge-btn').textContent = 'Forging…';
+  document.getElementById('progress').classList.add('active');
+  document.getElementById('results').classList.remove('active');
+  resetSteps();
+  startSimulatedProgress();
+
+  const payload = {
+    title,
+    notes: document.getElementById('notes').value.trim(),
+    productType: state.productType,
+    marketplace: state.marketplace,
+    madeToOrder: document.getElementById('made-to-order').value === 'true',
+    priceTier: document.getElementById('price-tier').value,
+    voiceAnchors: state.voiceAnchors,
+    image: {
+      data: state.image,
+      mimeType: state.imageType,
+      filename: state.imageName
+    },
+    shop: {
+      etsy: state.etsyShop,
+      shopify: state.shopifyHandle
+    },
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const r = await fetch(state.webhookUrl, {
+      method: 'POST',
+      headers: buildHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!r.ok){
+      throw new Error(`HTTP ${r.status}`);
+    }
+
+    const data = await r.json();
+    stopSimulatedProgress(true);
+    state.lastResult = data;
+    renderResults(data);
+    toast('✓ Listing forged', 'ok');
+  } catch(e){
+    stopSimulatedProgress(false);
+    toast(`Forge failed: ${e.message}`, 'err');
+    console.error(e);
+  } finally {
+    state.busy = false;
+    document.getElementById('forge-btn').disabled = false;
+    document.getElementById('forge-btn').textContent = '⚡ Forge listing';
+  }
+}
+
+let stepTimer;
+function resetSteps(){
+  document.querySelectorAll('.step').forEach(s => s.className = 'step');
+}
+function startSimulatedProgress(){
+  const steps = ['vision','research','claude','gpt','seo','assemble'];
+  let i = 0;
+  const advance = () => {
+    if (i > 0) {
+      const prev = document.querySelector(`.step[data-step="${steps[i-1]}"]`);
+      if (prev) prev.className = 'step done';
+    }
+    if (i < steps.length){
+      const cur = document.querySelector(`.step[data-step="${steps[i]}"]`);
+      if (cur) cur.className = 'step running';
+      i++;
+      stepTimer = setTimeout(advance, 4500 + Math.random() * 2500);
+    }
+  };
+  advance();
+}
+function stopSimulatedProgress(success){
+  clearTimeout(stepTimer);
+  document.querySelectorAll('.step').forEach(s => {
+    if (success) s.className = 'step done';
+    else if (s.classList.contains('running')) s.className = 'step err';
+  });
+}
+
+//=============================================================================
+// RESULTS
+//=============================================================================
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelector(`.tab-content[data-tab="${t.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+function renderResults(data){
+  // n8n returns responses as a single-element array; unwrap it
+  if (Array.isArray(data)) data = data[0] || {};
+  document.getElementById('results').classList.add('active');
+
+  // ETSY
+  const etsy = data.etsy || {};
+  document.getElementById('tab-etsy').innerHTML = `
+    ${block('Title', 'Claude', etsy.title || '—')}
+    ${block('Description', 'Claude', etsy.description || '—')}
+    ${block('Tags (13)', 'GPT', renderTags(etsy.tags), false, true)}
+    ${block('Materials', 'Claude', (etsy.materials || []).join(', '), false)}
+    ${block('Category / occasion', 'GPT', `${etsy.category || '—'}${etsy.occasion ? ' · ' + etsy.occasion : ''}`, false)}
+    ${etsy.suggestedPrice ? block('Suggested price', 'Gemini', etsy.suggestedPrice, false) : ''}
+  `;
+
+  // SHOPIFY
+  const shop = data.shopify || {};
+  document.getElementById('tab-shopify').innerHTML = `
+    ${block('Title', 'Claude', shop.title || '—')}
+    ${block('Meta description', 'Gemini', shop.metaDescription || '—')}
+    ${block('Body HTML', 'Claude', shop.bodyHtml || '—', true)}
+    ${block('Product type · vendor', 'GPT', `${shop.productType || '—'} · ${shop.vendor || 'Lumaisla'}`, false)}
+    ${block('Tags', 'GPT', renderTags(shop.tags), false, true)}
+    ${block('Alt text', 'Gemini', shop.altText || '—', false)}
+    ${shop.structuredData ? block('JSON-LD structured data', 'Gemini', JSON.stringify(shop.structuredData, null, 2), true) : ''}
+  `;
+
+  // ADS
+  const ads = data.adCopy || {};
+  document.getElementById('tab-ads').innerHTML = `
+    ${block('Headlines (Meta/Google)', 'GPT', renderList(ads.headlines), false)}
+    ${block('Primary text', 'GPT', ads.primaryText || '—')}
+    ${block('Pinterest pin copy', 'GPT', ads.pinterest || '—')}
+    ${block('Instagram caption', 'GPT', ads.instagram || '—')}
+    ${block('Email subject lines', 'GPT', renderList(ads.emailSubjects), false)}
+  `;
+
+  // SOURCES
+  const sources = data.sources || [];
+  document.getElementById('tab-sources').innerHTML = `
+    <div class="result-block">
+      <div class="result-block-head">
+        <span class="label">Validated sources <span class="by">// Gemini grounding</span></span>
+      </div>
+      <div class="result-block-body">
+        ${sources.length === 0 ? '<div style="color:var(--ink-faint)">No sources returned.</div>' :
+          '<ul class="source-list">' + sources.map(s => `
+            <li>
+              <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.title || s.url)}</a>
+              ${s.citation ? `<div class="citation">${escapeHtml(s.citation)}</div>` : ''}
+            </li>
+          `).join('') + '</ul>'
+        }
+      </div>
+    </div>
+  `;
+
+  // RAW
+  document.getElementById('tab-raw').innerHTML = block('Full response', 'n8n', JSON.stringify(data, null, 2), true);
+
+  // re-bind copy buttons
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyText(btn));
+  });
+
+  // scroll into view
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function block(label, by, content, mono, isHtml){
+  const id = 'b' + Math.random().toString(36).slice(2, 8);
+  return `
+    <div class="result-block">
+      <div class="result-block-head">
+        <span class="label">${escapeHtml(label)}<span class="by">// ${escapeHtml(by)}</span></span>
+        <button class="copy-btn" data-target="${id}">Copy</button>
+      </div>
+      <div class="result-block-body${mono ? ' mono' : ''}" id="${id}">${(typeof content === 'string' && !isHtml) ? escapeHtml(content) : content}</div>
+    </div>
+  `;
+}
+
+function renderTags(arr){
+  if (!arr || !arr.length) return '<span style="color:var(--ink-faint)">—</span>';
+  return '<div class="tag-list">' + arr.map(t => `<span>${escapeHtml(t)}</span>`).join('') + '</div>';
+}
+function renderList(arr){
+  if (!arr || !arr.length) return '—';
+  return arr.map((x, i) => `${i+1}. ${x}`).join('\n');
+}
+function escapeHtml(s){
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function copyText(btn){
+  const target = document.getElementById(btn.dataset.target);
+  if (!target) return;
+  const text = target.innerText;
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = 'Copied';
+    btn.classList.add('done');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+  } catch(e){
+    toast('Copy failed', 'err');
+  }
+}
+
+//=============================================================================
+// TOAST
+//=============================================================================
+let toastTimer;
+function toast(msg, kind){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast' + (kind ? ' ' + kind : ''); }, 3000);
+}
+
+//=============================================================================
+// INIT
+//=============================================================================
+loadSettings();
+</script>
+
+</body>
+</html>

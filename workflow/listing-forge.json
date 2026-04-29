@@ -1,0 +1,266 @@
+{
+  "name": "Listing Forge",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "listing-forge",
+        "responseMode": "responseNode",
+        "options": { "rawBody": false, "allowedOrigins": "*" }
+      },
+      "id": "01-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "listing-forge-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ping-check",
+              "leftValue": "={{ $json.body.ping }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "02-if-ping",
+      "name": "Is ping?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, service: 'Listing Forge', timestamp: $now.toISO() } }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] }
+        }
+      },
+      "id": "03-respond-ping",
+      "name": "Respond ping",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst payload = {\n  title: body.title || '',\n  notes: body.notes || '',\n  productType: body.productType || 'sculpture',\n  marketplace: body.marketplace || 'both',\n  madeToOrder: !!body.madeToOrder,\n  priceTier: body.priceTier || 'auto',\n  voiceAnchors: body.voiceAnchors || ['warm', 'maker'],\n  imageData: body.image?.data || '',\n  imageMimeType: body.image?.mimeType || 'image/jpeg',\n  imageName: body.image?.filename || 'product.jpg',\n  shopEtsy: body.shop?.etsy || 'Your Shop',\n  shopShopify: body.shop?.shopify || 'your-shop',\n  brandName: body.shop?.etsy || 'Your Shop',\n  timestamp: body.timestamp || new Date().toISOString()\n};\n\nconst visionText = `You are a senior product photographer and product researcher analyzing an item for an Etsy and Shopify listing.\\n\\nUSER NOTES:\\nTitle: ${payload.title}\\nProduct type: ${payload.productType}\\nNotes: ${payload.notes || 'none'}\\n\\nReturn a structured JSON object with these fields ONLY, no markdown:\\n{\\n  \"visualDescription\": \"2-3 sentence visual description\",\\n  \"likelySubject\": \"most likely subject/IP if recognizable, or 'original design'\",\\n  \"materialsObserved\": [\"likely\", \"materials\"],\\n  \"finishQuality\": \"hand-painted | airbrushed | unpainted | matte | glossy | weathered\",\\n  \"colorPalette\": [\"primary\", \"colors\"],\\n  \"estimatedScale\": \"miniature | desk | tabletop | bust-size | life-size | unclear\",\\n  \"distinctiveDetails\": [\"specific details worth highlighting\"],\\n  \"craftsmanshipNotes\": \"sentence on visible craft quality\",\\n  \"recommendedAngles\": [\"angles to photograph\"],\\n  \"aiVisibilityScore\": 1,\\n  \"reasoning\": \"why you scored visibility as you did\"\\n}\\n\\nReturn ONLY valid JSON, no preamble.`;\n\npayload.visionRequestBody = {\n  contents: [{\n    parts: [\n      { text: visionText },\n      { inline_data: { mime_type: payload.imageMimeType, data: payload.imageData } }\n    ]\n  }],\n  generationConfig: { temperature: 0.4, responseMimeType: 'application/json' }\n};\n\nreturn [{ json: payload }];"
+      },
+      "id": "04-prep",
+      "name": "Prep payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.visionRequestBody) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "05-gemini-vision",
+      "name": "Gemini :: Vision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 520],
+      "credentials": { "httpHeaderAuth": { "id": "GEMINI_API_KEY", "name": "Gemini API" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Prep payload').first().json;\nconst response = $input.first().json;\n\nlet vision = {};\ntry {\n  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n  vision = JSON.parse(text);\n} catch (e) {\n  vision = { error: 'Failed to parse Gemini Vision response', raw: response };\n}\n\nconst data = { ...original, vision };\n\nconst researchText = `You are an Etsy and Shopify SEO researcher with live web search. Research the following product.\\n\\nTITLE: ${data.title}\\nTYPE: ${data.productType}\\nVISUAL: ${JSON.stringify(data.vision)}\\nNOTES: ${data.notes || 'none'}\\nMARKETPLACE: ${data.marketplace}\\n\\nUsing live Google search, research:\\n1. Comparable products on Etsy and Shopify with price ranges\\n2. Top-performing search keywords\\n3. Trends, fan communities, cultural moments\\n4. IP/copyright caveats\\n5. Top Etsy tags for this niche\\n\\nReturn ONLY valid JSON:\\n{\"comparables\":[{\"description\":\"brief\",\"priceRange\":\"$X-$Y\",\"source\":\"etsy|shopify|other\"}],\"suggestedPriceRange\":\"$X - $Y\",\"topKeywords\":[\"15 keywords\"],\"trendingTags\":[\"trending\"],\"culturalContext\":\"sentence\",\"ipNotes\":\"sentence or No IP concerns\",\"buyerPersona\":\"who buys and why\",\"sources\":[]}`;\n\ndata.researchRequestBody = {\n  contents: [{ parts: [{ text: researchText }] }],\n  tools: [{ googleSearch: {} }],\n  generationConfig: { temperature: 0.5 }\n};\n\nreturn [{ json: data }];"
+      },
+      "id": "06-parse-vision",
+      "name": "Parse vision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.researchRequestBody) }}",
+        "options": { "timeout": 90000 }
+      },
+      "id": "07-gemini-research",
+      "name": "Gemini :: Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 520],
+      "credentials": { "httpHeaderAuth": { "id": "GEMINI_API_KEY", "name": "Gemini API" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prior = $('Parse vision').first().json;\nconst response = $input.first().json;\n\nlet research = {};\nlet sources = [];\n\ntry {\n  const candidate = response.candidates?.[0];\n  const text = candidate?.content?.parts?.[0]?.text || '{}';\n  const clean = text.replace(/^```json\\s*/i, '').replace(/```\\s*$/, '').trim();\n  research = JSON.parse(clean);\n\n  const groundingChunks = candidate?.groundingMetadata?.groundingChunks || [];\n  sources = groundingChunks.map(chunk => ({\n    url: chunk.web?.uri || '',\n    title: chunk.web?.title || chunk.web?.uri || '',\n    citation: ''\n  })).filter(s => s.url);\n\n  const supports = candidate?.groundingMetadata?.groundingSupports || [];\n  supports.forEach(s => {\n    const idx = s.groundingChunkIndices?.[0];\n    if (idx != null && sources[idx] && s.segment?.text && !sources[idx].citation) {\n      sources[idx].citation = s.segment.text.substring(0, 200);\n    }\n  });\n} catch (e) {\n  research = { error: 'Failed to parse Gemini Research', raw: response };\n}\n\nconst data = { ...prior, research, sources };\n\nconst voiceAnchors = (data.voiceAnchors || ['warm','maker']).join(', ');\nconst systemPrompt = `You are the in-house copywriter for ${data.brandName}, a maker shop. Write Etsy and Shopify listing copy that sounds like a real maker, not generic AI marketing. Brand anchors: ${voiceAnchors}. Lean into specifics, materials, time, craft. Avoid: 'elevate your space', 'perfect addition', 'whether you are', em-dashes as breath pauses, and other AI tells.`;\n\nconst userPrompt = `Write listing description copy.\\n\\nPRODUCT BRIEF\\nTitle: ${data.title}\\nType: ${data.productType}\\nMade-to-order: ${data.madeToOrder}\\nNotes: ${data.notes || 'none'}\\n\\nVISION\\n${JSON.stringify(data.vision)}\\n\\nRESEARCH\\n${JSON.stringify(data.research)}\\n\\nSHOP\\nEtsy: ${data.shopEtsy}\\nShopify: ${data.shopShopify}\\n\\nReturn ONLY valid JSON, no preamble, no markdown:\\n{\"etsyTitle\":\"under 140 chars\",\"shopifyTitle\":\"60-70 chars for Google Shopping\",\"etsyDescription\":\"4-7 paragraph maker-voice description, plain text with double line breaks\",\"shopifyBodyHtml\":\"same content with p, h3, ul, li tags. Include Details h3 with bullet list.\",\"materials\":[\"specific materials\"],\"shortHook\":\"one-line hook under 80 chars\"}`;\n\ndata.claudeRequestBody = {\n  model: 'claude-opus-4-5',\n  max_tokens: 3000,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: userPrompt }]\n};\n\nreturn [{ json: data }];"
+      },
+      "id": "08-parse-research",
+      "name": "Parse research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "anthropic-version", "value": "2023-06-01" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claudeRequestBody) }}",
+        "options": { "timeout": 90000 }
+      },
+      "id": "09-claude",
+      "name": "Claude :: Voice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 520],
+      "credentials": { "httpHeaderAuth": { "id": "ANTHROPIC_API_KEY", "name": "Anthropic API" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prior = $('Parse research').first().json;\nconst response = $input.first().json;\n\nlet claude = {};\ntry {\n  const text = response.content?.[0]?.text || '{}';\n  const clean = text.replace(/^```json\\s*/i, '').replace(/```\\s*$/, '').trim();\n  claude = JSON.parse(clean);\n} catch (e) {\n  claude = { error: 'Failed to parse Claude response', raw: response };\n}\n\nconst data = { ...prior, claude };\n\nconst gptUserContent = `Generate short-form variants for this product.\\n\\nTitle: ${data.claude?.etsyTitle || data.title}\\nHook: ${data.claude?.shortHook || ''}\\nProduct type: ${data.productType}\\nResearch keywords: ${(data.research?.topKeywords || []).join(', ')}\\nTrending tags: ${(data.research?.trendingTags || []).join(', ')}\\nBuyer persona: ${data.research?.buyerPersona || ''}\\n\\nReturn ONLY valid JSON in this exact shape:\\n{\"titleVariants\":[\"5 alternative Etsy titles, each different angle, under 140 chars\"],\"etsyTags\":[\"exactly 13 tags, each 20 chars or under, mix of broad + long-tail\"],\"shopifyTags\":[\"10-15 Shopify tags optimized for collection filtering\"],\"adHeadlines\":[\"6 ad headlines under 30 chars each\"],\"adPrimaryText\":\"90-125 word primary ad text for Meta/Facebook ads, conversational, single paragraph\",\"pinterestPin\":\"Pinterest pin description, 200-300 chars, with 3-5 hashtags at end\",\"instagramCaption\":\"Instagram caption with line breaks and 8-12 niche hashtags grouped at bottom\",\"emailSubjects\":[\"5 email subject lines under 50 chars each\"],\"category\":\"best Etsy category path\",\"occasion\":\"primary occasion tag if applicable, else empty string\"}`;\n\ndata.gptRequestBody = {\n  model: 'gpt-5',\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You are an Etsy and ad-copy specialist. You write punchy short-form variants that win clicks. Avoid AI tells. Always return valid JSON only.' },\n    { role: 'user', content: gptUserContent }\n  ]\n};\n\nreturn [{ json: data }];"
+      },
+      "id": "10-parse-claude",
+      "name": "Parse claude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.gptRequestBody) }}",
+        "options": { "timeout": 90000 }
+      },
+      "id": "11-gpt",
+      "name": "GPT :: Variants",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 520],
+      "credentials": { "httpHeaderAuth": { "id": "OPENAI_API_KEY", "name": "OpenAI API" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prior = $('Parse claude').first().json;\nconst response = $input.first().json;\n\nlet gpt = {};\ntry {\n  const text = response.choices?.[0]?.message?.content || '{}';\n  gpt = JSON.parse(text);\n} catch (e) {\n  gpt = { error: 'Failed to parse GPT response', raw: response };\n}\n\nconst data = { ...prior, gpt };\n\nconst seoText = `You are a technical SEO specialist for Shopify and Google Merchant Center.\\n\\nProduct title: ${data.claude?.shopifyTitle || data.title}\\nDescription: ${data.claude?.etsyDescription || ''}\\nMaterials: ${(data.claude?.materials || []).join(', ')}\\nProduct type: ${data.productType}\\nKeywords: ${(data.research?.topKeywords || []).join(', ')}\\nPrice tier: ${data.priceTier}\\nSuggested price: ${data.research?.suggestedPriceRange || ''}\\nMade-to-order: ${data.madeToOrder}\\nVendor: ${data.brandName}\\n\\nReturn ONLY valid JSON, no markdown:\\n{\"metaTitle\":\"50-60 chars\",\"metaDescription\":\"150-160 chars with CTA\",\"altText\":\"100-125 chars\",\"urlHandle\":\"slug\",\"productType\":\"type\",\"vendor\":\"${data.brandName}\",\"googleProductCategory\":\"category\",\"structuredData\":{\"@context\":\"https://schema.org/\",\"@type\":\"Product\",\"name\":\"\",\"description\":\"\",\"brand\":{\"@type\":\"Brand\",\"name\":\"${data.brandName}\"},\"category\":\"\",\"material\":\"\",\"offers\":{\"@type\":\"Offer\",\"priceCurrency\":\"USD\",\"price\":\"placeholder\",\"availability\":\"\"}},\"suggestedPrice\":\"\"}`;\n\ndata.seoRequestBody = {\n  contents: [{ parts: [{ text: seoText }] }],\n  generationConfig: { temperature: 0.3, responseMimeType: 'application/json' }\n};\n\nreturn [{ json: data }];"
+      },
+      "id": "12-parse-gpt",
+      "name": "Parse gpt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 520]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.seoRequestBody) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "13-gemini-seo",
+      "name": "Gemini :: SEO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 520],
+      "credentials": { "httpHeaderAuth": { "id": "GEMINI_API_KEY", "name": "Gemini API" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prior = $('Parse gpt').first().json;\nconst response = $input.first().json;\n\nlet seo = {};\ntry {\n  const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';\n  seo = JSON.parse(text);\n} catch (e) {\n  seo = { error: 'Failed to parse Gemini SEO', raw: response };\n}\n\nconst { vision, research, claude, gpt, sources } = prior;\n\nconst out = {\n  ok: true,\n  generatedAt: new Date().toISOString(),\n  input: {\n    title: prior.title,\n    productType: prior.productType,\n    notes: prior.notes\n  },\n  etsy: {\n    title: claude.etsyTitle || '',\n    description: claude.etsyDescription || '',\n    tags: gpt.etsyTags || [],\n    materials: claude.materials || [],\n    category: gpt.category || '',\n    occasion: gpt.occasion || '',\n    suggestedPrice: seo.suggestedPrice || research.suggestedPriceRange || ''\n  },\n  shopify: {\n    title: claude.shopifyTitle || claude.etsyTitle || '',\n    metaTitle: seo.metaTitle || '',\n    metaDescription: seo.metaDescription || '',\n    bodyHtml: claude.shopifyBodyHtml || '',\n    productType: seo.productType || prior.productType,\n    vendor: seo.vendor || prior.brandName,\n    tags: gpt.shopifyTags || [],\n    altText: seo.altText || '',\n    urlHandle: seo.urlHandle || '',\n    googleProductCategory: seo.googleProductCategory || '',\n    structuredData: seo.structuredData || null\n  },\n  adCopy: {\n    titleVariants: gpt.titleVariants || [],\n    headlines: gpt.adHeadlines || [],\n    primaryText: gpt.adPrimaryText || '',\n    pinterest: gpt.pinterestPin || '',\n    instagram: gpt.instagramCaption || '',\n    emailSubjects: gpt.emailSubjects || []\n  },\n  sources: sources || [],\n  research: {\n    comparables: research.comparables || [],\n    suggestedPriceRange: research.suggestedPriceRange || '',\n    buyerPersona: research.buyerPersona || '',\n    culturalContext: research.culturalContext || '',\n    ipNotes: research.ipNotes || ''\n  },\n  vision\n};\n\nreturn [{ json: out }];"
+      },
+      "id": "14-assemble",
+      "name": "Assemble",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2880, 520]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": { "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }] }
+        }
+      },
+      "id": "15-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [3100, 520]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Is ping?", "type": "main", "index": 0 }]] },
+    "Is ping?": {
+      "main": [
+        [{ "node": "Respond ping", "type": "main", "index": 0 }],
+        [{ "node": "Prep payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prep payload": { "main": [[{ "node": "Gemini :: Vision", "type": "main", "index": 0 }]] },
+    "Gemini :: Vision": { "main": [[{ "node": "Parse vision", "type": "main", "index": 0 }]] },
+    "Parse vision": { "main": [[{ "node": "Gemini :: Research", "type": "main", "index": 0 }]] },
+    "Gemini :: Research": { "main": [[{ "node": "Parse research", "type": "main", "index": 0 }]] },
+    "Parse research": { "main": [[{ "node": "Claude :: Voice", "type": "main", "index": 0 }]] },
+    "Claude :: Voice": { "main": [[{ "node": "Parse claude", "type": "main", "index": 0 }]] },
+    "Parse claude": { "main": [[{ "node": "GPT :: Variants", "type": "main", "index": 0 }]] },
+    "GPT :: Variants": { "main": [[{ "node": "Parse gpt", "type": "main", "index": 0 }]] },
+    "Parse gpt": { "main": [[{ "node": "Gemini :: SEO", "type": "main", "index": 0 }]] },
+    "Gemini :: SEO": { "main": [[{ "node": "Assemble", "type": "main", "index": 0 }]] },
+    "Assemble": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "versionId": "1.1.0",
+  "tags": [{ "name": "listing-forge" }]
+}
